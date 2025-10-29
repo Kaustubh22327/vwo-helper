@@ -1,61 +1,80 @@
 (function() {
   console.log('[VWO Helper] 🟦 Script loaded successfully into window');
+  console.log('[VWO Helper] 🌍 Window object available?', typeof window !== 'undefined');
+  console.log('[VWO Helper] 🤖 Self object available?', typeof self !== 'undefined');
 
-  // Attach to both window and self (for GTM sandbox safety)
-  self.vwoSendEvent = window.vwoSendEvent = function(accountId, eventName, eventData, vwoUuid, region, properties) {
-    try {
-      if (!accountId || !eventName || !vwoUuid) {
-        console.error('[VWO Helper] ❌ Missing required params:', { accountId, eventName, vwoUuid });
-        return;
-      }
+  // Wrap everything in try/catch for visibility
+  try {
+    // Attach helper to both window and self for GTM sandbox safety
+    self.vwoSendEvent = window.vwoSendEvent = function(accountId, eventName, eventData, vwoUuid, region, properties) {
+      console.log('[VWO Helper] 🧩 vwoSendEvent called with params:', {
+        accountId, eventName, eventData, vwoUuid, region, properties
+      });
 
-      // Determine region prefix
-      let prefix = '';
-      if (region === 'eu') prefix = 'eu01/';
-      else if (region === 'in') prefix = 'as01/';
+      try {
+        // Validate inputs
+        if (!accountId || !eventName || !vwoUuid) {
+          console.error('[VWO Helper] ❌ Missing required parameters:', { accountId, eventName, vwoUuid });
+          return;
+        }
 
-      const url = `https://dev.visualwebsiteoptimizer.com/${prefix}events/t?en=${encodeURIComponent(eventName)}&a=${encodeURIComponent(accountId)}`;
+        // Determine region prefix
+        let prefix = '';
+        if (region === 'eu') prefix = 'eu01/';
+        else if (region === 'in') prefix = 'as01/';
 
-      // Construct payload
-      const timestampMs = Date.now();
-      const timestampSec = Math.floor(timestampMs / 1000);
+        const url = `https://dev.visualwebsiteoptimizer.com/${prefix}events/t?en=${encodeURIComponent(eventName)}&a=${encodeURIComponent(accountId)}`;
+        console.log('[VWO Helper] 🌐 Constructed URL:', url);
 
-      const body = {
-        d: {
-          msgId: vwoUuid + '-' + timestampMs,
-          visId: vwoUuid,
-          event: {
-            name: eventName,
-            time: timestampMs,
-            props: {
-              ...(eventData || {}),
-              ...(properties || {}), // 🆕 merged user-specified properties
-              isCustomEvent: true,
-              vwoMeta: { source: 'gtm' },
+        // Construct payload
+        const timestampMs = Date.now();
+        const timestampSec = Math.floor(timestampMs / 1000);
+
+        const body = {
+          d: {
+            msgId: vwoUuid + '-' + timestampMs,
+            visId: vwoUuid,
+            event: {
+              name: eventName,
+              time: timestampMs,
+              props: {
+                ...(eventData || {}),
+                ...(properties || {}),
+                isCustomEvent: true,
+                vwoMeta: { source: 'gtm' },
+              },
             },
+            sessionId: timestampSec,
           },
-          sessionId: timestampSec,
-        },
-      };
+        };
 
-      console.log('[VWO Helper] 🚀 Sending POST to:', url);
-      console.log('[VWO Helper] 🧾 Payload:', body);
+        console.log('[VWO Helper] 🧾 Final Payload:', JSON.stringify(body, null, 2));
 
-      fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json;charset=UTF-8' },
-        body: JSON.stringify(body),
-      })
-        .then(async (res) => {
-          const text = await res.text();
-          console.log('[VWO Helper] ✅ POST success:', res.status);
-          console.log('[VWO Helper] 📦 Response Body:', text);
+        // Fire POST request
+        fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json;charset=UTF-8' },
+          body: JSON.stringify(body),
         })
-        .catch((err) => {
-          console.error('[VWO Helper] ❌ POST failed:', err);
-        });
-    } catch (e) {
-      console.error('[VWO Helper] ❌ Exception:', e);
-    }
-  };
+          .then(async (res) => {
+            const text = await res.text();
+            console.log('[VWO Helper] ✅ POST success. Status:', res.status);
+            console.log('[VWO Helper] 📦 Response Body:', text);
+          })
+          .catch((err) => {
+            console.error('[VWO Helper] ❌ POST failed. Error:', err);
+          });
+      } catch (err) {
+        console.error('[VWO Helper] ❌ Exception in vwoSendEvent:', err);
+      }
+    };
+
+    console.log('[VWO Helper] ✅ vwoSendEvent successfully attached to window and self.');
+    console.log('[VWO Helper] 🕵️ Check: typeof window.vwoSendEvent =', typeof window.vwoSendEvent);
+    console.log('[VWO Helper] 🕵️ Check: typeof self.vwoSendEvent =', typeof self.vwoSendEvent);
+    console.log('[VWO Helper] 🏁 Ready to receive GTM event calls.');
+
+  } catch (e) {
+    console.error('[VWO Helper] ❌ Exception while defining helper:', e);
+  }
 })();
