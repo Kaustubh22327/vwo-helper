@@ -1,14 +1,10 @@
 (function () {
-  console.log('[VWO Helper] 🟦 Script loaded successfully into window');
+  console.log('[VWO Helper] 🟦 Script loaded successfully');
   console.log('[VWO Helper] 🌍 window?', typeof window !== 'undefined');
   console.log('[VWO Helper] 🤖 self?', typeof self !== 'undefined');
 
   try {
-    /**
-     * Main function to handle VWO POST events.
-     * Expects a single options object.
-     */
-    function vwoPostHelper({ accountId, eventName, vwoUuid, region, properties }) {
+    function vwoPostHelper(accountId, eventName, vwoUuid, region, properties) {
       console.log('---------------------------------------------');
       console.log('[VWO Helper] 🚀 vwoPostHelper called with:', {
         accountId,
@@ -18,30 +14,39 @@
         properties,
       });
 
-      // ✅ Validation
-      if (!accountId || !eventName || !vwoUuid) {
-        console.error('[VWO Helper] ❌ Missing required params (accountId, eventName, or vwoUuid).');
+      // Handle Run Test extra wrapper case
+      const args = accountId && typeof accountId === 'object' ? accountId : {
+        accountId,
+        eventName,
+        vwoUuid,
+        region,
+        properties,
+      };
+
+      const { accountId: acc, eventName: evt, vwoUuid: uuid, region: reg, properties: props } = args;
+
+      if (!acc || !evt || !uuid) {
+        console.error('[VWO Helper] ❌ Missing required params.');
         return;
       }
 
-      // ✅ Construct final POST URL
-      const baseUrl =
-        region === 'eu'
-          ? 'https://dev.visualwebsiteoptimizer.com/eu01/events/t'
-          : 'https://dev.visualwebsiteoptimizer.com/events/t';
-      const finalUrl = `${baseUrl}?en=${encodeURIComponent(eventName)}&a=${accountId}`;
+      // ✅ Build endpoint URL properly
+      const baseUrl = reg === 'eu'
+        ? 'https://dev.visualwebsiteoptimizer.com/eu01/events/t'
+        : 'https://dev.visualwebsiteoptimizer.com/events/t';
+      const finalUrl = `${baseUrl}?en=${encodeURIComponent(evt)}&a=${acc}`;
 
       // ✅ Construct payload
       const now = Date.now();
       const payload = {
         d: {
-          msgId: `${vwoUuid}-${now}`,
-          visId: vwoUuid,
+          msgId: `${uuid}-${now}`,
+          visId: uuid,
           event: {
-            name: eventName,
+            name: evt,
             time: now,
             props: {
-              ...properties,
+              ...props,
               page: {
                 title: document.title,
                 url: location.href,
@@ -55,10 +60,9 @@
         },
       };
 
-      console.log('[VWO Helper] 📦 Final payload:', JSON.stringify(payload, null, 2));
-      console.log('[VWO Helper] 🌐 Sending POST to:', finalUrl);
+      console.log('[VWO Helper] 🌐 Final URL:', finalUrl);
+      console.log('[VWO Helper] 📦 Payload:', JSON.stringify(payload, null, 2));
 
-      // ✅ Send POST
       fetch(finalUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json;charset=UTF-8' },
@@ -74,16 +78,9 @@
         });
     }
 
-    // Attach to window and self for GTM sandbox compatibility
-    if (typeof window !== 'undefined') {
-      window.vwoPostHelper = vwoPostHelper;
-      console.log('[VWO Helper] 🧠 Attached to window');
-    }
-    if (typeof self !== 'undefined') {
-      self.vwoPostHelper = vwoPostHelper;
-      console.log('[VWO Helper] 🧠 Attached to self');
-    }
-
+    // Attach to window/self
+    if (typeof window !== 'undefined') window.vwoPostHelper = vwoPostHelper;
+    if (typeof self !== 'undefined') self.vwoPostHelper = vwoPostHelper;
     console.log('[VWO Helper] ✅ Ready to receive GTM event calls.');
   } catch (e) {
     console.error('[VWO Helper] ❌ Exception while initializing helper:', e);
