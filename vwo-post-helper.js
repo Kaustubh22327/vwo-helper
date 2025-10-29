@@ -1,10 +1,14 @@
 (function () {
   console.log('[VWO Helper] 🟦 Script loaded successfully into window');
-  console.log('[VWO Helper] 🌍 Window object?', typeof window !== 'undefined');
-  console.log('[VWO Helper] 🤖 Self object?', typeof self !== 'undefined');
+  console.log('[VWO Helper] 🌍 window?', typeof window !== 'undefined');
+  console.log('[VWO Helper] 🤖 self?', typeof self !== 'undefined');
 
   try {
-    function vwoPostHelper(accountId, eventName, vwoUuid, region, properties) {
+    /**
+     * Main function to handle VWO POST events.
+     * Expects a single options object.
+     */
+    function vwoPostHelper({ accountId, eventName, vwoUuid, region, properties }) {
       console.log('---------------------------------------------');
       console.log('[VWO Helper] 🚀 vwoPostHelper called with:', {
         accountId,
@@ -14,16 +18,17 @@
         properties,
       });
 
-      // Basic validation
+      // ✅ Validation
       if (!accountId || !eventName || !vwoUuid) {
-        console.error('[VWO Helper] ❌ Missing required params.');
+        console.error('[VWO Helper] ❌ Missing required params (accountId, eventName, or vwoUuid).');
         return;
       }
 
       // ✅ Construct final POST URL
-      const baseUrl = region === 'eu'
-        ? 'https://dev.visualwebsiteoptimizer.com/eu01/events/t'
-        : 'https://dev.visualwebsiteoptimizer.com/events/t';
+      const baseUrl =
+        region === 'eu'
+          ? 'https://dev.visualwebsiteoptimizer.com/eu01/events/t'
+          : 'https://dev.visualwebsiteoptimizer.com/events/t';
       const finalUrl = `${baseUrl}?en=${encodeURIComponent(eventName)}&a=${accountId}`;
 
       // ✅ Construct payload
@@ -53,6 +58,7 @@
       console.log('[VWO Helper] 📦 Final payload:', JSON.stringify(payload, null, 2));
       console.log('[VWO Helper] 🌐 Sending POST to:', finalUrl);
 
+      // ✅ Send POST
       fetch(finalUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json;charset=UTF-8' },
@@ -68,7 +74,7 @@
         });
     }
 
-    // Attach to both window and self
+    // Attach to window and self for GTM sandbox compatibility
     if (typeof window !== 'undefined') {
       window.vwoPostHelper = vwoPostHelper;
       console.log('[VWO Helper] 🧠 Attached to window');
