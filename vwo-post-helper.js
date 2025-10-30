@@ -1,20 +1,36 @@
 (function () {
-  function vwoPostHelper(accountId, eventName, vwoUuid, region, properties, smartCodeEnabled, debug) {
-    const log = (...args) => { if (debug) console.log(...args); };
-    const error = (...args) => { if (debug) console.error(...args); };
+  function vwoPostHelper(accountId, eventName, vwoUuid, region, properties, smartCodeEnabled, debugMode) {
+    const log = (...args) => {
+      if (debugMode) console.log(...args);
+    };
+    const error = (...args) => {
+      if (debugMode) console.error(...args);
+    };
 
     log('---------------------------------------------');
     log('[VWO Helper] 🚀 vwoPostHelper called with:', {
-      accountId, eventName, vwoUuid, region, properties, smartCodeEnabled, debug,
+      accountId,
+      eventName,
+      vwoUuid,
+      region,
+      properties,
+      smartCodeEnabled,
+      debugMode,
     });
 
     const args = accountId && typeof accountId === 'object' ? accountId : {
-      accountId, eventName, vwoUuid, region, properties, smartCodeEnabled, debug,
+      accountId,
+      eventName,
+      vwoUuid,
+      region,
+      properties,
+      smartCodeEnabled,
+      debugMode,
     };
 
     const { accountId: acc, eventName: evt, vwoUuid: uuid, region: reg, properties: props, smartCodeEnabled: smart } = args;
 
-    // --- SmartCode Mode
+    // 🧩 SMART CODE MODE
     if (smart) {
       log('[VWO Helper] ⚡ Smart Code mode ENABLED — pushing via window.VWO');
       if (window.VWO && typeof window.VWO.push === 'function') {
@@ -26,7 +42,7 @@
       return;
     }
 
-    // --- Normal POST Mode
+    // 🧱 NORMAL MODE (direct POST)
     if (!acc || !evt || !uuid) {
       error('[VWO Helper] ❌ Missing required params.');
       return;
@@ -79,9 +95,6 @@
       });
   }
 
-  // Attach to window/self
   if (typeof window !== 'undefined') window.vwoPostHelper = vwoPostHelper;
   if (typeof self !== 'undefined') self.vwoPostHelper = vwoPostHelper;
-
-  console.log('[VWO Helper] ✅ Ready to receive GTM event calls.');
 })();
