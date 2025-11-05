@@ -75,17 +75,41 @@
     } = args;
 
     // --- Mode 1: SmartCode push ---
-    if (smart) {
-      log('[VWO Helper] ⚡ Smart Code mode ENABLED — pushing via window.VWO');
+    // --- Mode 1: SmartCode push ---
+if (smart) {
+  log('[VWO Helper] ⚡ Smart Code mode ENABLED — pushing via window.VWO');
 
-      if (window.VWO && typeof window.VWO.push === 'function') {
-        window.VWO.push(['event', evt, props || {}, { source: 'gtm', via: 'smartCode' }]);
-        log('[VWO Helper] ✅ Event pushed via Smart Code:', evt);
-      } else {
-        error('[VWO Helper] ❌ window.VWO not found or invalid.');
-      }
-      return;
+  // sanitize props to avoid DOM nodes/undefined
+  const sanitize = (obj) => {
+    if (!obj || typeof obj !== 'object') return {};
+    const out = {};
+    for (const k in obj) {
+      const v = obj[k];
+      if (v === undefined || typeof v === 'function') continue;
+      if (typeof Node !== 'undefined' && v instanceof Node) continue;
+      out[k] = v;
     }
+    return out;
+  };
+
+  try {
+    // ensure queue exists even if SmartCode hasn’t loaded yet
+    if (!window.VWO) window.VWO = [];
+    if (typeof window.VWO.push !== 'function') {
+      // if some custom object without push, convert to a queue
+      window.VWO = [].concat(window.VWO);
+    }
+
+    const safeProps = sanitize(props || {});
+    // 3‑argument API; avoid 4th options object which can crash some builds
+    window.VWO.push(['event', String(evt || ''), safeProps]);
+
+    log('[VWO Helper] ✅ Event queued/pushed via Smart Code:', evt);
+  } catch (e) {
+    error('[VWO Helper] ❌ Smart Code push failed:', e);
+  }
+  return;
+}
 
     // --- Mode 2: Direct POST mode ---
     if (!acc || !evt || !uuid) {
@@ -153,3 +177,4 @@
   if (typeof window !== 'undefined') window.vwoPostHelper = vwoPostHelper;
   if (typeof self !== 'undefined') self.vwoPostHelper = vwoPostHelper;
 })();
+
