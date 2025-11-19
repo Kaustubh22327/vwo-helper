@@ -1,72 +1,60 @@
+/**
+ * VWO Post Helper Script - Simplified
+ * Handles Direct POST mode only.
+ */
 (function () {
-
-  function vwoPushEvent(args) {
-    if (!args) args = {};
-
-    var acc  = args.accountId;
-    var evt  = args.eventName;
-    var uuid = args.vwoUuid;
-    var reg  = args.region;
-    var props = args.properties || {};
-
-    if (!acc || !evt || !uuid) {
-      console.error('VWO Push Error: Missing required parameters');
+  function vwoPostHelper(accountId, eventName, vwoUuid, region, properties) {
+    // Validate required fields
+    if (!accountId || !eventName || !vwoUuid) {
+      console.warn('[VWO Helper] Missing required fields:', { accountId, eventName, vwoUuid });
       return;
     }
-
-    // Build endpoint URL
-    var baseUrl = 'https://dev.visualwebsiteoptimizer.com/events/t';
-    if (reg === 'eu') baseUrl = 'https://dev.visualwebsiteoptimizer.com/eu01/events/t';
-    else if (reg === 'in') baseUrl = 'https://dev.visualwebsiteoptimizer.com/as01/events/t';
-
-    var finalUrl = baseUrl + '?en=' + encodeURIComponent(evt) + '&a=' + acc;
-    var now = Date.now();
-
-    // Merge props manually
-    var eventProps = {};
-
-    // copy user props
-    for (var key in props) {
-      if (props.hasOwnProperty(key)) {
-        eventProps[key] = props[key];
-      }
+    
+    // Determine base URL based on region
+    let baseUrl = 'https://dev.visualwebsiteoptimizer.com/events/t';
+    if (region === 'eu') {
+      baseUrl = 'https://dev.visualwebsiteoptimizer.com/eu01/events/t';
+    } else if (region === 'in') {
+      baseUrl = 'https://dev.visualwebsiteoptimizer.com/as01/events/t';
     }
-
-    // add page details
-    eventProps.page = {
-      title: document.title,
-      url: location.href,
-      referredUrl: document.referrer
-    };
-
-    eventProps.isCustomEvent = true;
-    eventProps.vwoMeta = { source: 'gtm' };
-
-    // Payload
-    var payload = {
+    
+    const finalUrl = `${baseUrl}?en=${encodeURIComponent(eventName)}&a=${accountId}`;
+    const now = Date.now();
+    
+    // Build payload
+    const payload = {
       d: {
-        msgId: uuid + '-' + now,
-        visId: uuid,
+        msgId: `${vwoUuid}-${now}`,
+        visId: vwoUuid,
         event: {
-          name: evt,
+          name: eventName,
           time: now,
-          props: eventProps
+          props: {
+            ...(properties || {}),
+            page: {
+              title: document.title,
+              url: location.href,
+              referredUrl: document.referrer
+            },
+            isCustomEvent: true,
+            vwoMeta: { source: 'gtm' }
+          }
         },
-        sessionId: now / 1000
+        sessionId: Math.floor(now / 1000)
       }
     };
-
-    // Fire POST request
+    
+    // Send POST request
     fetch(finalUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json;charset=UTF-8' },
       body: JSON.stringify(payload)
-    }).catch(function (e) {
-      console.error('VWO Direct Push Error:', e);
+    }).catch((err) => {
+      console.warn('[VWO Helper] POST request failed:', err);
     });
   }
-
-  if (typeof window !== 'undefined') window.vwoPushEvent = vwoPushEvent;
-  if (typeof self !== 'undefined') self.vwoPushEvent = vwoPushEvent;
-
+  
+  // Expose globally
+  if (typeof window !== 'undefined') window.vwoPostHelper = vwoPostHelper;
+  if (typeof self !== 'undefined') self.vwoPostHelper = vwoPostHelper;
 })();
