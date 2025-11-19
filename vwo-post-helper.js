@@ -1,60 +1,70 @@
 /**
- * VWO Post Helper Script - Simplified
- * Handles Direct POST mode only.
+ * VWO Push Helper Script
+ * -------------------------------------------------------
+ * Sends events directly to VWO collector when SmartCode mode is OFF.
+ * Exposed globally as: window.vwoPushEvent()
  */
+
 (function () {
-  function vwoPostHelper(accountId, eventName, vwoUuid, region, properties) {
-    // Validate required fields
-    if (!accountId || !eventName || !vwoUuid) {
-      console.warn('[VWO Helper] Missing required fields:', { accountId, eventName, vwoUuid });
+
+  function vwoPushEvent(args = {}) {
+
+    const {
+      accountId: acc,
+      eventName: evt,
+      vwoUuid: uuid,
+      region: reg,
+      properties: props
+    } = args;
+
+    if (!acc || !evt || !uuid) {
+      console.error('VWO Push Error: Missing required parameters');
       return;
     }
-    
-    // Determine base URL based on region
+
+    // --------------- Build Endpoint URL ---------------
     let baseUrl = 'https://dev.visualwebsiteoptimizer.com/events/t';
-    if (region === 'eu') {
-      baseUrl = 'https://dev.visualwebsiteoptimizer.com/eu01/events/t';
-    } else if (region === 'in') {
-      baseUrl = 'https://dev.visualwebsiteoptimizer.com/as01/events/t';
-    }
-    
-    const finalUrl = `${baseUrl}?en=${encodeURIComponent(eventName)}&a=${accountId}`;
+    if (reg === 'eu') baseUrl = 'https://dev.visualwebsiteoptimizer.com/eu01/events/t';
+    else if (reg === 'in') baseUrl = 'https://dev.visualwebsiteoptimizer.com/as01/events/t';
+
+    const finalUrl = `${baseUrl}?en=${encodeURIComponent(evt)}&a=${acc}`;
     const now = Date.now();
-    
-    // Build payload
+
+    // ---------------- Request Payload -----------------
     const payload = {
       d: {
-        msgId: `${vwoUuid}-${now}`,
-        visId: vwoUuid,
+        msgId: `${uuid}-${now}`,
+        visId: uuid,
         event: {
-          name: eventName,
+          name: evt,
           time: now,
           props: {
-            ...(properties || {}),
+            ...props,
             page: {
               title: document.title,
               url: location.href,
-              referredUrl: document.referrer
+              referredUrl: document.referrer,
             },
             isCustomEvent: true,
             vwoMeta: { source: 'gtm' }
           }
         },
-        sessionId: Math.floor(now / 1000)
+        sessionId: now / 1000
       }
     };
-    
-    // Send POST request
+
+    // ----------------- Fire POST ----------------------
     fetch(finalUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json;charset=UTF-8' },
       body: JSON.stringify(payload)
-    }).catch((err) => {
-      console.warn('[VWO Helper] POST request failed:', err);
+    }).catch((e) => {
+      console.error('VWO Direct Push Error:', e);
     });
   }
-  
-  // Expose globally
-  if (typeof window !== 'undefined') window.vwoPostHelper = vwoPostHelper;
-  if (typeof self !== 'undefined') self.vwoPostHelper = vwoPostHelper;
+
+  // Global exposure
+  if (typeof window !== 'undefined') window.vwoPushEvent = vwoPushEvent;
+  if (typeof self !== 'undefined') self.vwoPushEvent = vwoPushEvent;
+
 })();
