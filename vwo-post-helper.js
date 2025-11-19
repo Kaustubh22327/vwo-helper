@@ -4,10 +4,8 @@
  * Sends events directly to VWO collector when SmartCode mode is OFF.
  * Exposed globally as: window.vwoPushEvent()
  */
-
 (function () {
-  function vwoPostHelper(...args) {
-    // Destructure expected args with defaults
+  function vwoPushEvent(...args) {
     const [
       accountId,
       eventName,
@@ -67,6 +65,8 @@
   }
 
   // Expose globally
-  if (typeof window !== 'undefined') window.vwoPostHelper = vwoPostHelper;
-  if (typeof self !== 'undefined') self.vwoPostHelper = vwoPostHelper;
+  if (typeof window !== 'undefined') window.vwoPushEvent = vwoPushEvent;
+  if (typeof self !== 'undefined') self.vwoPushEvent = vwoPushEvent;
 })();
+
+
