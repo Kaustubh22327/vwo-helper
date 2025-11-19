@@ -3,18 +3,18 @@
  * ----------------------------------------
  * Enables Google Tag Manager (GTM) templates to send custom tracking events to VWO.
  *
- * ✅ Supports:
- *   1️⃣ SmartCode Mode (push via window.VWO)
- *   2️⃣ Direct POST Mode (send via collector API)
+ *  Supports:
+ *   1️ SmartCode Mode (push via window.VWO)
+ *   2️ Direct POST Mode (send via collector API)
  *
- * ⚙️ Includes:
- *   - Region-based URL prefix handling (US, EU, IN)
+ *  Includes:
+ *   - Region-based URL prefix handling (US, EU, AS)
  *   - Debug logging (only active when debugMode = true)
  *
- * 📘 Region Guidance:
+ *  Region Guidance:
  *   If your account is configured with a non-US data center:
  *     - Use 'eu01' for EU accounts
- *     - Use 'as01' for India accounts
+ *     - Use 'as01' for Asia accounts
  *   Otherwise, the default (US) collector is used.
  *   Incorrect prefixes will cause POST calls to be rejected.
  */
@@ -117,4 +117,5 @@
   if (typeof window !== 'undefined') window.vwoPostHelper = vwoPostHelper;
   if (typeof self !== 'undefined') self.vwoPostHelper = vwoPostHelper;
 })();
+
 
