@@ -8,9 +8,7 @@
  *   - Direct POST Mode (send via collector API)
  *
  *  Includes:
- *   - Region-based URL prefix handling (us,eu,as)
- *   - Debug logging (only active when debugMode = true)
- *
+ *   - Region-based URL prefix handling (us,eu,as) 
  *  Region Guidance:
  *   If your account is configured with a non-US data center:
  *     - Use 'eu01' for EU accounts
@@ -68,7 +66,7 @@
         const safeProps = sanitize(props || {});
         window.VWO.push(['event', String(evt || ''), safeProps]);
       } catch (e) {
-        // silent fail
+        console.error('VWO SmartCode push error:', e);
       }
       return;
     }
@@ -109,15 +107,11 @@
       method: 'POST',
       headers: { 'Content-Type': 'application/json;charset=UTF-8' },
       body: JSON.stringify(payload),
-    }).catch(() => {
-      // silent failure
+    }).catch((e) => {
+      console.error('VWO Direct Post error:', e);
     });
   }
 
   if (typeof window !== 'undefined') window.vwoPostHelper = vwoPostHelper;
   if (typeof self !== 'undefined') self.vwoPostHelper = vwoPostHelper;
 })();
-
-
-
-
