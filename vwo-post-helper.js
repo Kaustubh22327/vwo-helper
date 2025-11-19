@@ -1,79 +1,28 @@
 /**
- * VWO Post Helper Script
- * ----------------------------------------
- * Enables Google Tag Manager (GTM) templates to send custom tracking events to VWO.
- *
- *  Supports:
- *   - SmartCode Mode (push via window.VWO)
- *   - Direct POST Mode (send via collector API)
- *
- *  Includes:
- *   - Region-based URL prefix handling (us,eu,as) 
- *  Region Guidance:
- *   If your account is configured with a non-US data center:
- *     - Use 'eu01' for EU accounts
- *     - Use 'as01' for India accounts
- *   Otherwise, the default (US) collector is used.
- *   Incorrect prefixes will cause POST calls to be rejected.
+ * VWO Push Helper Script
+ * -------------------------------------------------------
+ * Sends events directly to VWO collector when SmartCode mode is OFF.
+ * Exposed globally as: window.vwoPushEvent()
  */
 
 (function () {
 
-  function vwoPostHelper(accountId, eventName, vwoUuid, region, properties, smartCodeEnabled) {
-
-    const args =
-      accountId && typeof accountId === 'object'
-        ? accountId
-        : {
-            accountId,
-            eventName,
-            vwoUuid,
-            region,
-            properties,
-            smartCodeEnabled
-          };
+  function vwoPushEvent(args = {}) {
 
     const {
       accountId: acc,
       eventName: evt,
       vwoUuid: uuid,
       region: reg,
-      properties: props,
-      smartCodeEnabled: smart
+      properties: props
     } = args;
 
-    // ---------------- SMART CODE MODE ----------------
-    if (smart) {
-
-      const sanitize = (obj) => {
-        if (!obj || typeof obj !== 'object') return {};
-        const out = {};
-        for (const k in obj) {
-          const v = obj[k];
-          if (v === undefined || typeof v === 'function') continue;
-          if (typeof Node !== 'undefined' && v instanceof Node) continue;
-          out[k] = v;
-        }
-        return out;
-      };
-
-      try {
-        if (!window.VWO) window.VWO = [];
-        if (typeof window.VWO.push !== 'function') {
-          window.VWO = [].concat(window.VWO);
-        }
-
-        const safeProps = sanitize(props || {});
-        window.VWO.push(['event', String(evt || ''), safeProps]);
-      } catch (e) {
-        console.error('VWO SmartCode push error:', e);
-      }
+    if (!acc || !evt || !uuid) {
+      console.error('VWO Push Error: Missing required parameters');
       return;
     }
 
-    // --------------- DIRECT POST MODE ---------------
-    if (!acc || !evt || !uuid) return;
-
+    // --------------- Build Endpoint URL ---------------
     let baseUrl = 'https://dev.visualwebsiteoptimizer.com/events/t';
     if (reg === 'eu') baseUrl = 'https://dev.visualwebsiteoptimizer.com/eu01/events/t';
     else if (reg === 'in') baseUrl = 'https://dev.visualwebsiteoptimizer.com/as01/events/t';
@@ -81,6 +30,7 @@
     const finalUrl = `${baseUrl}?en=${encodeURIComponent(evt)}&a=${acc}`;
     const now = Date.now();
 
+    // ---------------- Request Payload -----------------
     const payload = {
       d: {
         msgId: `${uuid}-${now}`,
@@ -96,22 +46,25 @@
               referredUrl: document.referrer,
             },
             isCustomEvent: true,
-            vwoMeta: { source: 'gtm' },
-          },
+            vwoMeta: { source: 'gtm' }
+          }
         },
-        sessionId: now / 1000,
-      },
+        sessionId: now / 1000
+      }
     };
 
+    // ----------------- Fire POST ----------------------
     fetch(finalUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json;charset=UTF-8' },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(payload)
     }).catch((e) => {
-      console.error('VWO Direct Post error:', e);
+      console.error('VWO Direct Push Error:', e);
     });
   }
 
-  if (typeof window !== 'undefined') window.vwoPostHelper = vwoPostHelper;
-  if (typeof self !== 'undefined') self.vwoPostHelper = vwoPostHelper;
+  // Global exposure
+  if (typeof window !== 'undefined') window.vwoPushEvent = vwoPushEvent;
+  if (typeof self !== 'undefined') self.vwoPushEvent = vwoPushEvent;
+
 })();
