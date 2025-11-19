@@ -8,13 +8,13 @@
  *   - Direct POST Mode (send via collector API)
  *
  *  Includes:
- *   - Region-based URL prefix handling (US, EU, AS)
+ *   - Region-based URL prefix handling (us,eu,as)
  *   - Debug logging (only active when debugMode = true)
  *
  *  Region Guidance:
  *   If your account is configured with a non-US data center:
  *     - Use 'eu01' for EU accounts
- *     - Use 'as01' for Asia accounts
+ *     - Use 'as01' for India accounts
  *   Otherwise, the default (US) collector is used.
  *   Incorrect prefixes will cause POST calls to be rejected.
  */
@@ -117,6 +117,7 @@
   if (typeof window !== 'undefined') window.vwoPostHelper = vwoPostHelper;
   if (typeof self !== 'undefined') self.vwoPostHelper = vwoPostHelper;
 })();
+
 
 
 
