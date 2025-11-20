@@ -38,12 +38,12 @@
         properties = formatted;
       }
 
-      // If still an object → clean nested objects properly
+      // If still an object → stringify nested objects/arrays
       else if (properties && typeof properties === "object") {
         Object.keys(properties).forEach(key => {
           const val = properties[key];
-          if (val && typeof val === "object") {
-            properties[key] = JSON.parse(JSON.stringify(val));
+          if (val && (typeof val === "object" || Array.isArray(val))) {
+            properties[key] = JSON.stringify(val);
           }
         });
       } else {
