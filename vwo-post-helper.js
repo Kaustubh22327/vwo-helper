@@ -3,9 +3,14 @@
 * -------------------------------------------------------
 * Sends events directly to VWO collector when SmartCode mode is OFF.
 * Exposed globally as: window.vwoPushEvent()
+*
+* IMPORTANT FIX: Removed the IIFE wrapper to allow GTM's copyFromWindow to access it.
 */
-(function () {
-  function vwoPushEvent(...args) {
+
+// Define the function using 'var' or 'window/self' directly 
+// to ensure it's on the global scope of the injected script's context.
+
+var vwoPushEvent = function vwoPushEvent(...args) {
     let [
       accountId,
       eventName,
@@ -22,7 +27,7 @@
       }
 
       // Now properties should be an object like: {price: "700", custom: {...}}
-      // Stringify only nested objects/arrays
+      // Stringify only nested objects/arrays for VWO collector requirement
       if (properties && typeof properties === "object" && !Array.isArray(properties)) {
         Object.keys(properties).forEach(key => {
           const val = properties[key];
@@ -53,13 +58,13 @@
       baseUrl = 'https://dev.visualwebsiteoptimizer.com/as01/events/t';
     }
 
-    const finalUrl = ${baseUrl}?en=${encodeURIComponent(eventName)}&a=${accountId};
+    const finalUrl = `${baseUrl}?en=${encodeURIComponent(eventName)}&a=${accountId}`;
     const now = Date.now();
 
     // Build payload EXACTLY like required
     const payload = {
       d: {
-        msgId: ${vwoVisitorId}-${now},
+        msgId: `${vwoVisitorId}-${now}`,
         visId: vwoVisitorId,
         event: {
           name: eventName,
@@ -89,9 +94,9 @@
     }).catch((err) => {
       console.warn('[VWO Helper] POST request failed:', err);
     });
-  }
+};
 
-  // Expose globally
-  if (typeof window !== 'undefined') window.vwoPushEvent = vwoPushEvent;
-  if (typeof self !== 'undefined') self.vwoPushEvent = vwoPushEvent;
-})();
+// Ensure it is explicitly attached to the global object if necessary,
+// although using 'var' at the top level should suffice in this context.
+if (typeof window !== 'undefined') window.vwoPushEvent = vwoPushEvent;
+if (typeof self !== 'undefined') self.vwoPushEvent = vwoPushEvent;
