@@ -1,9 +1,3 @@
-/**
- * VWO Push Helper Script
- * -------------------------------------------------------
- * Sends events directly to VWO collector when SmartCode mode is OFF.
- * Exposed globally as: window.vwoPushEvent()
- */
 (function () {
   function vwoPushEvent(...args) {
     const [
@@ -14,36 +8,12 @@
       properties = {}
     ] = args;
 
-    // ---- Normalize properties ----
-    try {
-      // If properties is a string, parse it
-      if (typeof properties === "string") {
-        properties = JSON.parse(properties);
-      }
-
-      // If still object → iterate and stringify nested objects
-      if (properties && typeof properties === "object") {
-        Object.keys(properties).forEach(key => {
-          const val = properties[key];
-          if (val && typeof val === "object") {
-            properties[key] = JSON.stringify(val);
-          }
-        });
-      } else {
-        properties = {};
-      }
-    } catch (e) {
-      console.warn("[VWO Helper] Failed to process properties:", e);
-      properties = {};
-    }
-
-    // Validate required fields
     if (!accountId || !eventName || !vwoUuid) {
       console.warn('[VWO Helper] Missing required fields:', { accountId, eventName, vwoUuid });
       return;
     }
 
-    // Determine base URL based on region
+    // Determine base URL
     let baseUrl = 'https://dev.visualwebsiteoptimizer.com/events/t';
     if (region === 'eu') {
       baseUrl = 'https://dev.visualwebsiteoptimizer.com/eu01/events/t';
@@ -54,7 +24,20 @@
     const finalUrl = `${baseUrl}?en=${encodeURIComponent(eventName)}&a=${accountId}`;
     const now = Date.now();
 
-    // Build payload
+    // Convert nested objects/arrays to string
+    const cleanedProps = {};
+    if (properties && typeof properties === 'object') {
+      for (const key in properties) {
+        const val = properties[key];
+        if (val && typeof val === 'object') {
+          cleanedProps[key] = JSON.stringify(val);
+        } else {
+          cleanedProps[key] = val;
+        }
+      }
+    }
+
+    // Build final payload EXACT format
     const payload = {
       d: {
         msgId: `${vwoUuid}-${now}`,
@@ -63,7 +46,7 @@
           name: eventName,
           time: now,
           props: {
-            ...(properties || {}),
+            ...cleanedProps,
             page: {
               title: document.title,
               url: location.href,
@@ -77,9 +60,8 @@
       }
     };
 
-    console.log("[VWO Helper] Final Payload:", payload);
+    console.log('[VWO Helper] Payload:', payload);
 
-    // Send POST request
     fetch(finalUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json;charset=UTF-8' },
@@ -89,7 +71,6 @@
     });
   }
 
-  // Expose globally
   if (typeof window !== 'undefined') window.vwoPushEvent = vwoPushEvent;
   if (typeof self !== 'undefined') self.vwoPushEvent = vwoPushEvent;
 })();
