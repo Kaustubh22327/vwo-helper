@@ -14,6 +14,29 @@
       properties = {}
     ] = args;
 
+    // ---- Normalize properties ----
+    try {
+      // If properties is a string, parse it
+      if (typeof properties === "string") {
+        properties = JSON.parse(properties);
+      }
+
+      // If still object → iterate and stringify nested objects
+      if (properties && typeof properties === "object") {
+        Object.keys(properties).forEach(key => {
+          const val = properties[key];
+          if (val && typeof val === "object") {
+            properties[key] = JSON.stringify(val);
+          }
+        });
+      } else {
+        properties = {};
+      }
+    } catch (e) {
+      console.warn("[VWO Helper] Failed to process properties:", e);
+      properties = {};
+    }
+
     // Validate required fields
     if (!accountId || !eventName || !vwoUuid) {
       console.warn('[VWO Helper] Missing required fields:', { accountId, eventName, vwoUuid });
@@ -54,6 +77,8 @@
       }
     };
 
+    console.log("[VWO Helper] Final Payload:", payload);
+
     // Send POST request
     fetch(finalUrl, {
       method: 'POST',
@@ -68,5 +93,3 @@
   if (typeof window !== 'undefined') window.vwoPushEvent = vwoPushEvent;
   if (typeof self !== 'undefined') self.vwoPushEvent = vwoPushEvent;
 })();
-
-
