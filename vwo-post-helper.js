@@ -5,91 +5,108 @@
 * Exposed globally as: window.vwoPushEvent()
 */
 (function () {
-function vwoPushEvent(...args) {
-const [
-accountId,
-eventName,
-vwoUuid,
-region = '',
-properties = {}
-] = args;
+  function vwoPushEvent(...args) {
+    let [
+      accountId,
+      eventName,
+      vwoUuid,
+      region = '',
+      properties = {}
+    ] = args;
 
-// ---- Normalize properties ----
-try {
-// If properties is a string, parse it
-if (typeof properties === "string") {
-properties = JSON.parse(properties);
-}
+    // ---- Normalize properties ----
+    try {
+      // If properties is a string → parse it
+      if (typeof properties === "string") {
+        properties = JSON.parse(properties);
+      }
 
-// If still object → iterate and stringify nested objects
-if (properties && typeof properties === "object") {
-Object.keys(properties).forEach(key => {
-const val = properties[key];
-if (val && typeof val === "object") {
-properties[key] = JSON.stringify(val);
-}
-});
-} else {
-properties = {};
-}
-} catch (e) {
-console.warn("[VWO Helper] Failed to process properties:", e);
-properties = {};
-}
+      // If properties is an array like:
+      // [ { property_name: 'price', property_value: 700 }, ... ]
+      if (Array.isArray(properties)) {
+        const formatted = {};
+        properties.forEach(item => {
+          if (
+            item &&
+            typeof item === "object" &&
+            "property_name" in item &&
+            "property_value" in item
+          ) {
+            formatted[item.property_name] = item.property_value;
+          }
+        });
+        properties = formatted;
+      }
 
-// Validate required fields
-if (!accountId || !eventName || !vwoUuid) {
-console.warn('[VWO Helper] Missing required fields:', { accountId, eventName, vwoUuid });
-return;
-}
+      // If still an object → clean nested objects properly
+      else if (properties && typeof properties === "object") {
+        Object.keys(properties).forEach(key => {
+          const val = properties[key];
+          if (val && typeof val === "object") {
+            properties[key] = JSON.parse(JSON.stringify(val));
+          }
+        });
+      } else {
+        properties = {};
+      }
+    } catch (e) {
+      console.warn("[VWO Helper] Failed to process properties:", e);
+      properties = {};
+    }
 
-// Determine base URL based on region
-let baseUrl = 'https://dev.visualwebsiteoptimizer.com/events/t';
-if (region === 'eu') {
-baseUrl = 'https://dev.visualwebsiteoptimizer.com/eu01/events/t';
-} else if (region === 'in') {
-baseUrl = 'https://dev.visualwebsiteoptimizer.com/as01/events/t';
-}
+    // Validate required fields
+    if (!accountId || !eventName || !vwoUuid) {
+      console.warn('[VWO Helper] Missing required fields:', { accountId, eventName, vwoUuid });
+      return;
+    }
 
-const finalUrl = `${baseUrl}?en=${encodeURIComponent(eventName)}&a=${accountId}`;
-const now = Date.now();
+    // Determine base URL based on region
+    let baseUrl = 'https://dev.visualwebsiteoptimizer.com/events/t';
+    if (region === 'eu') {
+      baseUrl = 'https://dev.visualwebsiteoptimizer.com/eu01/events/t';
+    } else if (region === 'in') {
+      baseUrl = 'https://dev.visualwebsiteoptimizer.com/as01/events/t';
+    }
 
-// Build payload
-const payload = {
-d: {
-msgId: `${vwoUuid}-${now}`,
-visId: vwoUuid,
-event: {
-name: eventName,
-time: now,
-props: {
-...(properties || {}),
-page: {
-title: document.title,
-url: location.href,
-referredUrl: document.referrer
-},
-isCustomEvent: true,
-vwoMeta: { source: 'gtm' }
-}
-},
-sessionId: Math.floor(now / 1000)
-}
-};
+    const finalUrl = `${baseUrl}?en=${encodeURIComponent(eventName)}&a=${accountId}`;
+    const now = Date.now();
 
-console.log("[VWO Helper] Final Payload:", payload);
+    // Build payload EXACTLY like required
+    const payload = {
+      d: {
+        msgId: `${vwoUuid}-${now}`,
+        visId: vwoUuid,
+        event: {
+          name: eventName,
+          time: now,
+          props: {
+            ...(properties || {}),
+            page: {
+              title: document.title,
+              url: location.href,
+              referrerUrl: document.referrer
+            },
+            isCustomEvent: true,
+            vwoMeta: { source: 'gtm' }
+          }
+        },
+        sessionId: Math.floor(now / 1000)
+      }
+    };
 
-// Send POST request
-fetch(finalUrl, {
-method: 'POST',
-headers: { 'Content-Type': 'application/json;charset=UTF-8' },
-body: JSON.stringify(payload)
-}).catch((err) => {
-console.warn('[VWO Helper] POST request failed:', err);
-});
-}
+    console.log("[VWO Helper] Final Payload:", payload);
 
-// Expose globally
-if (typeof window !== 'undefined') window.vwoPushEvent = vwoPushEvent;
-if (typeof self !== 'undefined') self.vwoPushEvent = vwoPushEvent;
+    // Send POST request
+    fetch(finalUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json;charset=UTF-8' },
+      body: JSON.stringify(payload)
+    }).catch((err) => {
+      console.warn('[VWO Helper] POST request failed:', err);
+    });
+  }
+
+  // Expose globally
+  if (typeof window !== 'undefined') window.vwoPushEvent = vwoPushEvent;
+  if (typeof self !== 'undefined') self.vwoPushEvent = vwoPushEvent;
 })();
