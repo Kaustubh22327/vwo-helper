@@ -14,34 +14,19 @@
       properties = {}
     ] = args;
 
-    // ---- Normalize properties ----
+    // ---- Parse JSON string from GTM ----
     try {
       // If properties is a string → parse it
       if (typeof properties === "string") {
         properties = JSON.parse(properties);
       }
 
-      // If properties is an array like:
-      // [ { property_name: 'price', property_value: 700 }, ... ]
-      if (Array.isArray(properties)) {
-        const formatted = {};
-        properties.forEach(item => {
-          if (
-            item &&
-            typeof item === "object" &&
-            "property_name" in item &&
-            "property_value" in item
-          ) {
-            formatted[item.property_name] = item.property_value;
-          }
-        });
-        properties = formatted;
-      }
-
-      // If still an object → stringify nested objects/arrays
-      else if (properties && typeof properties === "object") {
+      // Now properties should be an object like: {price: "700", custom: {...}}
+      // Stringify only nested objects/arrays
+      if (properties && typeof properties === "object" && !Array.isArray(properties)) {
         Object.keys(properties).forEach(key => {
           const val = properties[key];
+          // Stringify if value is object or array
           if (val && (typeof val === "object" || Array.isArray(val))) {
             properties[key] = JSON.stringify(val);
           }
@@ -68,13 +53,13 @@
       baseUrl = 'https://dev.visualwebsiteoptimizer.com/as01/events/t';
     }
 
-    const finalUrl = `${baseUrl}?en=${encodeURIComponent(eventName)}&a=${accountId}`;
+    const finalUrl = ${baseUrl}?en=${encodeURIComponent(eventName)}&a=${accountId};
     const now = Date.now();
 
     // Build payload EXACTLY like required
     const payload = {
       d: {
-        msgId: `${vwoVisitorId}-${now}`,
+        msgId: ${vwoVisitorId}-${now},
         visId: vwoVisitorId,
         event: {
           name: eventName,
@@ -93,23 +78,6 @@
         sessionId: Math.floor(now / 1000)
       }
     };
-
-    // ---- FINAL FIX: stringify any nested objects in props ----
-    try {
-      const props = payload.d.event.props;
-      Object.keys(props).forEach(key => {
-        if (
-          props[key] &&
-          typeof props[key] === "object" &&
-          key !== "page" &&
-          key !== "vwoMeta"
-        ) {
-          props[key] = JSON.stringify(props[key]);
-        }
-      });
-    } catch (e) {
-      console.warn("[VWO Helper] Final props stringify failed:", e);
-    }
 
     console.log("[VWO Helper] Final Payload:", payload);
 
