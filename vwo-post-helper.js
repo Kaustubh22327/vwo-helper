@@ -9,7 +9,7 @@
     let [
       accountId,
       eventName,
-      vwoUuid,
+      vwoVisitorId,
       region = '',
       properties = {}
     ] = args;
@@ -55,8 +55,8 @@
     }
 
     // Validate required fields
-    if (!accountId || !eventName || !vwoUuid) {
-      console.warn('[VWO Helper] Missing required fields:', { accountId, eventName, vwoUuid });
+    if (!accountId || !eventName || !vwoVisitorId) {
+      console.warn('[VWO Helper] Missing required fields:', { accountId, eventName, vwoVisitorId });
       return;
     }
 
@@ -74,8 +74,8 @@
     // Build payload EXACTLY like required
     const payload = {
       d: {
-        msgId: `${vwoUuid}-${now}`,
-        visId: vwoUuid,
+        msgId: `${vwoVisitorId}-${now}`,
+        visId: vwoVisitorId,
         event: {
           name: eventName,
           time: now,
