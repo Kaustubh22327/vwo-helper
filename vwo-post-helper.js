@@ -1,72 +1,95 @@
+/**
+* VWO Push Helper Script
+* -------------------------------------------------------
+* Sends events directly to VWO collector when SmartCode mode is OFF.
+* Exposed globally as: window.vwoPushEvent()
+*/
 (function () {
+function vwoPushEvent(...args) {
+const [
+accountId,
+eventName,
+vwoUuid,
+region = '',
+properties = {}
+] = args;
 
-  function vwoPushEvent(args) {
-    if (!args) args = {};
+// ---- Normalize properties ----
+try {
+// If properties is a string, parse it
+if (typeof properties === "string") {
+properties = JSON.parse(properties);
+}
 
-    var acc  = args.accountId;
-    var evt  = args.eventName;
-    var uuid = args.vwoUuid;
-    var reg  = args.region;
-    var props = args.properties || {};
+// If still object → iterate and stringify nested objects
+if (properties && typeof properties === "object") {
+Object.keys(properties).forEach(key => {
+const val = properties[key];
+if (val && typeof val === "object") {
+properties[key] = JSON.stringify(val);
+}
+});
+} else {
+properties = {};
+}
+} catch (e) {
+console.warn("[VWO Helper] Failed to process properties:", e);
+properties = {};
+}
 
-    if (!acc || !evt || !uuid) {
-      console.error('VWO Push Error: Missing required parameters');
-      return;
-    }
+// Validate required fields
+if (!accountId || !eventName || !vwoUuid) {
+console.warn('[VWO Helper] Missing required fields:', { accountId, eventName, vwoUuid });
+return;
+}
 
-    // Build endpoint URL
-    var baseUrl = 'https://dev.visualwebsiteoptimizer.com/events/t';
-    if (reg === 'eu') baseUrl = 'https://dev.visualwebsiteoptimizer.com/eu01/events/t';
-    else if (reg === 'in') baseUrl = 'https://dev.visualwebsiteoptimizer.com/as01/events/t';
+// Determine base URL based on region
+let baseUrl = 'https://dev.visualwebsiteoptimizer.com/events/t';
+if (region === 'eu') {
+baseUrl = 'https://dev.visualwebsiteoptimizer.com/eu01/events/t';
+} else if (region === 'in') {
+baseUrl = 'https://dev.visualwebsiteoptimizer.com/as01/events/t';
+}
 
-    var finalUrl = baseUrl + '?en=' + encodeURIComponent(evt) + '&a=' + acc;
-    var now = Date.now();
+const finalUrl = `${baseUrl}?en=${encodeURIComponent(eventName)}&a=${accountId}`;
+const now = Date.now();
 
-    // Merge props manually
-    var eventProps = {};
+// Build payload
+const payload = {
+d: {
+msgId: `${vwoUuid}-${now}`,
+visId: vwoUuid,
+event: {
+name: eventName,
+time: now,
+props: {
+...(properties || {}),
+page: {
+title: document.title,
+url: location.href,
+referredUrl: document.referrer
+},
+isCustomEvent: true,
+vwoMeta: { source: 'gtm' }
+}
+},
+sessionId: Math.floor(now / 1000)
+}
+};
 
-    // copy user props
-    for (var key in props) {
-      if (props.hasOwnProperty(key)) {
-        eventProps[key] = props[key];
-      }
-    }
+console.log("[VWO Helper] Final Payload:", payload);
 
-    // add page details
-    eventProps.page = {
-      title: document.title,
-      url: location.href,
-      referredUrl: document.referrer
-    };
+// Send POST request
+fetch(finalUrl, {
+method: 'POST',
+headers: { 'Content-Type': 'application/json;charset=UTF-8' },
+body: JSON.stringify(payload)
+}).catch((err) => {
+console.warn('[VWO Helper] POST request failed:', err);
+});
+}
 
-    eventProps.isCustomEvent = true;
-    eventProps.vwoMeta = { source: 'gtm' };
-
-    // Payload
-    var payload = {
-      d: {
-        msgId: uuid + '-' + now,
-        visId: uuid,
-        event: {
-          name: evt,
-          time: now,
-          props: eventProps
-        },
-        sessionId: now / 1000
-      }
-    };
-
-    // Fire POST request
-    fetch(finalUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json;charset=UTF-8' },
-      body: JSON.stringify(payload)
-    }).catch(function (e) {
-      console.error('VWO Direct Push Error:', e);
-    });
-  }
-
-  if (typeof window !== 'undefined') window.vwoPushEvent = vwoPushEvent;
-  if (typeof self !== 'undefined') self.vwoPushEvent = vwoPushEvent;
-
+// Expose globally
+if (typeof window !== 'undefined') window.vwoPushEvent = vwoPushEvent;
+if (typeof self !== 'undefined') self.vwoPushEvent = vwoPushEvent;
 })();
