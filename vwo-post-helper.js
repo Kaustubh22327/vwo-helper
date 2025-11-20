@@ -1,76 +1,72 @@
 (function () {
-  function vwoPushEvent(...args) {
-    const [
-      accountId,
-      eventName,
-      vwoUuid,
-      region = '',
-      properties = {}
-    ] = args;
 
-    if (!accountId || !eventName || !vwoUuid) {
-      console.warn('[VWO Helper] Missing required fields:', { accountId, eventName, vwoUuid });
+  function vwoPushEvent(args) {
+    if (!args) args = {};
+
+    var acc  = args.accountId;
+    var evt  = args.eventName;
+    var uuid = args.vwoUuid;
+    var reg  = args.region;
+    var props = args.properties || {};
+
+    if (!acc || !evt || !uuid) {
+      console.error('VWO Push Error: Missing required parameters');
       return;
     }
 
-    // Determine base URL
-    let baseUrl = 'https://dev.visualwebsiteoptimizer.com/events/t';
-    if (region === 'eu') {
-      baseUrl = 'https://dev.visualwebsiteoptimizer.com/eu01/events/t';
-    } else if (region === 'in') {
-      baseUrl = 'https://dev.visualwebsiteoptimizer.com/as01/events/t';
-    }
+    // Build endpoint URL
+    var baseUrl = 'https://dev.visualwebsiteoptimizer.com/events/t';
+    if (reg === 'eu') baseUrl = 'https://dev.visualwebsiteoptimizer.com/eu01/events/t';
+    else if (reg === 'in') baseUrl = 'https://dev.visualwebsiteoptimizer.com/as01/events/t';
 
-    const finalUrl = `${baseUrl}?en=${encodeURIComponent(eventName)}&a=${accountId}`;
-    const now = Date.now();
+    var finalUrl = baseUrl + '?en=' + encodeURIComponent(evt) + '&a=' + acc;
+    var now = Date.now();
 
-    // Convert nested objects/arrays to string
-    const cleanedProps = {};
-    if (properties && typeof properties === 'object') {
-      for (const key in properties) {
-        const val = properties[key];
-        if (val && typeof val === 'object') {
-          cleanedProps[key] = JSON.stringify(val);
-        } else {
-          cleanedProps[key] = val;
-        }
+    // Merge props manually
+    var eventProps = {};
+
+    // copy user props
+    for (var key in props) {
+      if (props.hasOwnProperty(key)) {
+        eventProps[key] = props[key];
       }
     }
 
-    // Build final payload EXACT format
-    const payload = {
+    // add page details
+    eventProps.page = {
+      title: document.title,
+      url: location.href,
+      referredUrl: document.referrer
+    };
+
+    eventProps.isCustomEvent = true;
+    eventProps.vwoMeta = { source: 'gtm' };
+
+    // Payload
+    var payload = {
       d: {
-        msgId: `${vwoUuid}-${now}`,
-        visId: vwoUuid,
+        msgId: uuid + '-' + now,
+        visId: uuid,
         event: {
-          name: eventName,
+          name: evt,
           time: now,
-          props: {
-            ...cleanedProps,
-            page: {
-              title: document.title,
-              url: location.href,
-              referredUrl: document.referrer
-            },
-            isCustomEvent: true,
-            vwoMeta: { source: 'gtm' }
-          }
+          props: eventProps
         },
-        sessionId: Math.floor(now / 1000)
+        sessionId: now / 1000
       }
     };
 
-    console.log('[VWO Helper] Payload:', payload);
-
+    // Fire POST request
     fetch(finalUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json;charset=UTF-8' },
       body: JSON.stringify(payload)
-    }).catch((err) => {
-      console.warn('[VWO Helper] POST request failed:', err);
+    }).catch(function (e) {
+      console.error('VWO Direct Push Error:', e);
     });
   }
 
   if (typeof window !== 'undefined') window.vwoPushEvent = vwoPushEvent;
   if (typeof self !== 'undefined') self.vwoPushEvent = vwoPushEvent;
+
 })();
