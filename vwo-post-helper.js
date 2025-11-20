@@ -94,6 +94,23 @@
       }
     };
 
+    // ---- FINAL FIX: stringify any nested objects in props ----
+    try {
+      const props = payload.d.event.props;
+      Object.keys(props).forEach(key => {
+        if (
+          props[key] &&
+          typeof props[key] === "object" &&
+          key !== "page" &&
+          key !== "vwoMeta"
+        ) {
+          props[key] = JSON.stringify(props[key]);
+        }
+      });
+    } catch (e) {
+      console.warn("[VWO Helper] Final props stringify failed:", e);
+    }
+
     console.log("[VWO Helper] Final Payload:", payload);
 
     // Send POST request
